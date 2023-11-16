@@ -23,6 +23,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.test.core.app.ApplicationProvider
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.parser.IParser
+import ca.uhn.fhir.validation.FhirValidator
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.SearchResult
 import com.google.android.fhir.datacapture.mapping.ResourceMapper
@@ -47,6 +48,7 @@ import io.mockk.verify
 import java.util.Calendar
 import java.util.Date
 import javax.inject.Inject
+import javax.inject.Provider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -109,6 +111,8 @@ import org.smartregister.model.practitioner.PractitionerDetails
 class QuestionnaireViewModelTest : RobolectricTest() {
 
   @Inject lateinit var sharedPreferencesHelper: SharedPreferencesHelper
+
+  @Inject lateinit var fhirValidatorProvider: Provider<FhirValidator>
 
   @get:Rule(order = 0) val hiltRule = HiltAndroidRule(this)
 
@@ -175,6 +179,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
           dispatcherProvider = defaultRepo.dispatcherProvider,
           sharedPreferencesHelper = sharedPreferencesHelper,
           libraryEvaluatorProvider = { libraryEvaluator },
+          fhirValidatorProvider = fhirValidatorProvider,
           tracer = FakePerformanceReporter()
         )
       )

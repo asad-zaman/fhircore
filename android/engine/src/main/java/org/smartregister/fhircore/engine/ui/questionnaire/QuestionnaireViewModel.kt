@@ -25,6 +25,7 @@ import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.context.FhirVersionEnum
 import ca.uhn.fhir.rest.gclient.TokenClientParam
 import ca.uhn.fhir.rest.param.ParamPrefixEnum
+import ca.uhn.fhir.validation.FhirValidator
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.datacapture.mapping.ResourceMapper
 import com.google.android.fhir.datacapture.mapping.StructureMapExtractionContext
@@ -71,6 +72,7 @@ import org.smartregister.fhircore.engine.configuration.view.FormConfiguration
 import org.smartregister.fhircore.engine.cql.LibraryEvaluator
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
 import org.smartregister.fhircore.engine.data.remote.model.response.UserInfo
+import org.smartregister.fhircore.engine.di.checkResourceValid
 import org.smartregister.fhircore.engine.task.FhirCarePlanGenerator
 import org.smartregister.fhircore.engine.trace.PerformanceReporter
 import org.smartregister.fhircore.engine.util.AssetUtil
@@ -84,6 +86,7 @@ import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.assertSubject
 import org.smartregister.fhircore.engine.util.extension.cqfLibraryIds
 import org.smartregister.fhircore.engine.util.extension.deleteRelatedResources
+import org.smartregister.fhircore.engine.util.extension.encodeResourceToString
 import org.smartregister.fhircore.engine.util.extension.extractId
 import org.smartregister.fhircore.engine.util.extension.extractLogicalIdUuid
 import org.smartregister.fhircore.engine.util.extension.filterByResourceTypeId
@@ -110,6 +113,7 @@ constructor(
   val dispatcherProvider: DispatcherProvider,
   val sharedPreferencesHelper: SharedPreferencesHelper,
   val libraryEvaluatorProvider: Provider<LibraryEvaluator>,
+  val fhirValidatorProvider: Provider<FhirValidator>,
   var tracer: PerformanceReporter
 ) : ViewModel() {
   @Inject lateinit var fhirCarePlanGenerator: FhirCarePlanGenerator
@@ -242,6 +246,16 @@ constructor(
     }
   }
 
+  suspend fun validateResource(resource: Resource) {
+    withContext(dispatcherProvider.unconfined()) {
+      val result = fhirValidatorProvider.get().validateWithResult(resource)
+      if (!result.isSuccessful) {
+        Timber.e(resource.encodeResourceToString())
+        throw IllegalStateException(result.messages.joinToString { it.message })
+      }
+    }
+  }
+
   suspend fun appendPatientsAndRelatedPersonsToGroups(resource: Resource, groupResourceId: String) {
     defaultRepository.loadResource<Group>(groupResourceId)?.run {
       if (resource.resourceType == ResourceType.Patient) {
@@ -257,6 +271,9 @@ constructor(
             reference = "${ResourceType.RelatedPerson.name}/${resource.logicalId}"
           }
       }
+
+      fhirValidatorProvider.get().checkResourceValid(this)
+
       defaultRepository.addOrUpdate(true, this)
     }
   }
@@ -374,6 +391,9 @@ constructor(
       resource = resource.copy().apply { meta.versionId = versionId }
       /** Delete a FHIR [source] in the local storage. */
       fhirEngine.delete(resource.resourceType, resource.id)
+
+      fhirValidatorProvider.get().checkResourceValid(resource)
+
       /** Recreate a FHIR [source] in the local storage. */
       fhirEngine.create(resource)
     } catch (e: Exception) {
@@ -467,6 +487,8 @@ constructor(
       it.valueCodeableConcept.coding.forEach { questionnaireResponse.meta.addTag(it) }
     }
 
+    fhirValidatorProvider.get().checkResourceValid(questionnaireResponse)
+
     defaultRepository.addOrUpdate(true, questionnaireResponse)
   }
 
@@ -489,7 +511,11 @@ constructor(
 
   suspend fun saveBundleResources(bundle: Bundle) {
     if (!bundle.isEmpty) {
-      bundle.entry.forEach { defaultRepository.addOrUpdate(true, it.resource) }
+      bundle.entry.forEach {
+        fhirValidatorProvider.get().checkResourceValid(it.resource)
+
+        defaultRepository.addOrUpdate(true, it.resource)
+      }
     }
   }
 
@@ -616,7 +642,11 @@ constructor(
   }
 
   fun saveResource(resource: Resource) {
-    viewModelScope.launch { defaultRepository.save(resource = resource) }
+    viewModelScope.launch {
+      fhirValidatorProvider.get().checkResourceValid(resource)
+
+      defaultRepository.save(resource = resource)
+    }
   }
 
   fun extractRelevantObservation(

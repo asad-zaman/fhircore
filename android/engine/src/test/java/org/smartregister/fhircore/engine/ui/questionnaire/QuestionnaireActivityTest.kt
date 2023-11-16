@@ -31,6 +31,7 @@ import androidx.fragment.app.commitNow
 import androidx.test.core.app.ApplicationProvider
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.context.FhirVersionEnum
+import ca.uhn.fhir.validation.FhirValidator
 import com.google.android.fhir.datacapture.QuestionnaireFragment
 import com.google.android.fhir.datacapture.validation.QuestionnaireResponseValidator.checkQuestionnaireResponse
 import dagger.hilt.android.testing.BindValue
@@ -45,6 +46,8 @@ import io.mockk.runs
 import io.mockk.spyk
 import io.mockk.unmockkObject
 import io.mockk.verify
+import javax.inject.Inject
+import javax.inject.Provider
 import kotlin.test.assertFailsWith
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runBlockingTest
@@ -110,6 +113,8 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
 
   @BindValue val syncBroadcaster = mockk<SyncBroadcaster>()
 
+  @Inject lateinit var fhirValidatorProvider: Provider<FhirValidator>
+
   @BindValue
   val questionnaireViewModel: QuestionnaireViewModel =
     spyk(
@@ -121,6 +126,7 @@ class QuestionnaireActivityTest : ActivityRobolectricTest() {
         dispatcherProvider = dispatcherProvider,
         sharedPreferencesHelper = mockk(),
         libraryEvaluatorProvider = { mockk<LibraryEvaluator>() },
+        fhirValidatorProvider = fhirValidatorProvider,
         tracer = FakePerformanceReporter()
       )
     )
