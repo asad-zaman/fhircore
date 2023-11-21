@@ -19,12 +19,14 @@ package org.smartregister.fhircore.engine.task
 import androidx.annotation.VisibleForTesting
 import ca.uhn.fhir.context.FhirContext
 import ca.uhn.fhir.util.TerserUtil
+import ca.uhn.fhir.validation.FhirValidator
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.get
 import com.google.android.fhir.logicalId
 import com.google.android.fhir.search.search
 import java.util.Date
 import javax.inject.Inject
+import javax.inject.Provider
 import javax.inject.Singleton
 import org.hl7.fhir.r4.model.ActivityDefinition
 import org.hl7.fhir.r4.model.Base
@@ -54,6 +56,7 @@ import org.hl7.fhir.r4.utils.StructureMapUtilities
 import org.smartregister.fhircore.engine.configuration.QuestionnaireConfig
 import org.smartregister.fhircore.engine.configuration.event.EventType
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
+import org.smartregister.fhircore.engine.di.checkResourceValid
 import org.smartregister.fhircore.engine.util.extension.addResourceParameter
 import org.smartregister.fhircore.engine.util.extension.asReference
 import org.smartregister.fhircore.engine.util.extension.encodeResourceToString
@@ -75,6 +78,7 @@ constructor(
   val transformSupportServices: TransformSupportServices,
   val defaultRepository: DefaultRepository,
   val fhirResourceUtil: FhirResourceUtil,
+  val fhirValidatorProvider: Provider<FhirValidator>,
   val workflowCarePlanGenerator: WorkflowCarePlanGenerator,
 ) {
   private val structureMapUtilities by lazy {
@@ -208,9 +212,15 @@ constructor(
         carePlan.contained.clear()
 
         // Save CarePlan only if it has activity, otherwise just save contained/dependent resources
-        if (output.hasActivity()) defaultRepository.create(true, carePlan)
+        if (output.hasActivity()) {
+          fhirValidatorProvider.get().checkResourceValid(carePlan)
+          defaultRepository.create(true, carePlan)
+        }
 
-        dependents.forEach { defaultRepository.create(true, it) }
+        dependents.forEach {
+          fhirValidatorProvider.get().checkResourceValid(it)
+          defaultRepository.create(true, it)
+        }
 
         if (carePlan.status == CarePlan.CarePlanStatus.COMPLETED) {
           carePlan.activity
@@ -238,7 +248,10 @@ constructor(
         if (reason != null) this.statusReason = CodeableConcept().apply { text = reason }
       }
       ?.updateDependentTaskDueDate(defaultRepository)
-      ?.run { defaultRepository.addOrUpdate(addMandatoryTags = true, resource = this) }
+      ?.run {
+        fhirValidatorProvider.get().checkResourceValid(this)
+        defaultRepository.addOrUpdate(addMandatoryTags = true, resource = this)
+      }
   }
 
   suspend fun cancelTaskByTaskId(id: String, reason: String) {

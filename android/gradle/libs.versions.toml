@@ -98,6 +98,7 @@ work-runtime-ktx = "2.8.1"
 work-testing = "2.8.1"
 workflow = "0.1.0-alpha02-preview9.1-SNAPSHOT"
 xercesImpl = "2.12.2"
+hapi-fhir = "6.0.1"
 
 [libraries]
 accompanist-flowlayout = { group = "com.google.accompanist", name = "accompanist-flowlayout", version.ref = "accompanist-flowlayout" }
@@ -205,5 +206,6 @@ work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version
 work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work-testing" }
 workflow = { group = "org.smartregister", name = "workflow", version.ref = "workflow" }
 xercesImpl = { group = "xerces", name = "xercesImpl", version.ref = "xercesImpl" }
+hapi-fhir-validation = {group = "ca.uhn.hapi.fhir", name="hapi-fhir-validation", version.ref = "hapi-fhir"}
 
 [plugins]

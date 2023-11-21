@@ -22,6 +22,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ca.uhn.fhir.validation.FhirValidator
 import com.google.android.fhir.datacapture.mapping.ResourceMapper
 import com.google.android.fhir.datacapture.mapping.StructureMapExtractionContext
 import com.google.android.fhir.datacapture.validation.NotValidated
@@ -35,6 +36,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Provider
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,7 +47,6 @@ import org.hl7.fhir.r4.model.Group
 import org.hl7.fhir.r4.model.IdType
 import org.hl7.fhir.r4.model.ListResource
 import org.hl7.fhir.r4.model.ListResource.ListEntryComponent
-import org.hl7.fhir.r4.model.Patient
 import org.hl7.fhir.r4.model.Questionnaire
 import org.hl7.fhir.r4.model.QuestionnaireResponse
 import org.hl7.fhir.r4.model.RelatedPerson
@@ -55,6 +56,7 @@ import org.hl7.fhir.r4.model.StringType
 import org.smartregister.fhircore.engine.configuration.GroupResourceConfig
 import org.smartregister.fhircore.engine.configuration.QuestionnaireConfig
 import org.smartregister.fhircore.engine.data.local.DefaultRepository
+import org.smartregister.fhircore.engine.di.checkResourceValid
 import org.smartregister.fhircore.engine.domain.model.ActionParameter
 import org.smartregister.fhircore.engine.domain.model.ActionParameterType
 import org.smartregister.fhircore.engine.rulesengine.ResourceDataRulesExecutor
@@ -93,6 +95,7 @@ constructor(
   val transformSupportServices: TransformSupportServices,
   val sharedPreferencesHelper: SharedPreferencesHelper,
   val fhirOperator: FhirOperator,
+  val fhirValidatorProvider: Provider<FhirValidator>,
   val fhirPathDataExtractor: FhirPathDataExtractor,
 ) : ViewModel() {
 
@@ -346,6 +349,7 @@ constructor(
           }
         }
 
+        fhirValidatorProvider.get().checkResourceValid(this)
         defaultRepository.addOrUpdate(true, resource = this)
 
         addMemberToConfiguredGroup(this, questionnaireConfig.groupResource)
@@ -368,6 +372,7 @@ constructor(
       !currentQuestionnaireResponse.subject.reference.isNullOrEmpty() &&
         questionnaireConfig.saveQuestionnaireResponse
     ) {
+      fhirValidatorProvider.get().checkResourceValid(currentQuestionnaireResponse)
       defaultRepository.addOrUpdate(resource = currentQuestionnaireResponse)
     }
   }
@@ -514,6 +519,7 @@ constructor(
         }
       if (questionnaireHasAnswer) {
         questionnaireResponse.status = QuestionnaireResponse.QuestionnaireResponseStatus.INPROGRESS
+        //        fhirValidatorProvider.get().validateResource(questionnaireResponse)
         defaultRepository.addOrUpdate(addMandatoryTags = true, resource = questionnaireResponse)
       }
     }
@@ -669,6 +675,7 @@ constructor(
      * time anything linked to it in order to change the `_lastUpdated` timestamp. This helps us
      * with order the last updated group (household) on the top of the register.
      */
+    fhirValidatorProvider.get().checkResourceValid(group)
     defaultRepository.addOrUpdate(resource = group)
   }
 

@@ -18,6 +18,7 @@ package org.smartregister.fhircore.quest.ui.questionnaire
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
+import ca.uhn.fhir.validation.FhirValidator
 import com.google.android.fhir.FhirEngine
 import com.google.android.fhir.datacapture.mapping.ResourceMapper
 import com.google.android.fhir.db.ResourceNotFoundException
@@ -40,6 +41,7 @@ import io.mockk.verify
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Provider
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -107,6 +109,8 @@ class QuestionnaireViewModelTest : RobolectricTest() {
   @get:Rule(order = 0) val hiltRule = HiltAndroidRule(this)
 
   @Inject lateinit var sharedPreferencesHelper: SharedPreferencesHelper
+
+  @Inject lateinit var fhirValidatorProvider: Provider<FhirValidator>
 
   @Inject lateinit var configService: ConfigService
 
@@ -180,6 +184,7 @@ class QuestionnaireViewModelTest : RobolectricTest() {
           fhirCarePlanGenerator = fhirCarePlanGenerator,
           resourceDataRulesExecutor = resourceDataRulesExecutor,
           fhirPathDataExtractor = fhirPathDataExtractor,
+          fhirValidatorProvider = fhirValidatorProvider,
           fhirOperator = fhirOperator,
         ),
       )

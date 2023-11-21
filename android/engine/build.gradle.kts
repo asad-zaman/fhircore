@@ -157,6 +157,8 @@ dependencies {
     exclude(group = "ca.uhn.hapi.fhir")
   }
 
+  implementation(libs.hapi.fhir.validation) { exclude(module = "commons-logging") }
+
   // Shared dependencies
   api(libs.glide)
   api(libs.knowledger)
